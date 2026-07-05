@@ -2,6 +2,7 @@
 Builds the LangChain AgentExecutor that ties the fine-tuned LLM (served via
 vLLM's OpenAI-compatible endpoint) together with the tools in tools.py.
 """
+
 import logging
 import re
 
@@ -9,7 +10,7 @@ from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 
-from agents.prompts import AGENT_SYSTEM_PROMPT, EMERGENCY_RESPONSE
+from agents.prompts import AGENT_SYSTEM_PROMPT
 from agents.tools import ALL_TOOLS, check_emergency
 from config.settings import settings
 
@@ -31,7 +32,7 @@ def build_llm() -> ChatOpenAI:
         base_url=settings.vllm_base_url,
         api_key=settings.vllm_api_key,
         model=settings.vllm_model_name,
-        temperature=0.2,   # low temperature: we want consistent, cite-backed answers
+        temperature=0.2,  # low temperature: we want consistent, cite-backed answers
         max_tokens=800,
         timeout=60,
     )
@@ -52,8 +53,8 @@ def build_agent_executor() -> AgentExecutor:
         agent=agent,
         tools=ALL_TOOLS,
         verbose=False,
-        max_iterations=6,          # cap tool-call loops to avoid runaway cost/latency
-        max_execution_time=45,     # seconds, guards against a hanging tool call
+        max_iterations=6,  # cap tool-call loops to avoid runaway cost/latency
+        max_execution_time=45,  # seconds, guards against a hanging tool call
         handle_parsing_errors=True,  # don't crash the request on a malformed tool call
         return_intermediate_steps=True,  # needed to extract sources_used below
     )
@@ -93,11 +94,14 @@ def _sanitize_citations(output: str, valid_sources: list[str]) -> str:
     entirely rather than left in some rewritten form, since we have no
     reliable way to know what the model "meant" -- removing is the safe
     default (better to look uncited than falsely cited)."""
+
     def _replace(match: re.Match) -> str:
         tag_text = match.group(0)
         if any(src.lower() in tag_text.lower() for src in valid_sources):
             return tag_text  # matches a real source this turn -- keep it
-        log.warning("Stripped fabricated/unverifiable citation tag: %r", tag_text.strip())
+        log.warning(
+            "Stripped fabricated/unverifiable citation tag: %r", tag_text.strip()
+        )
         return ""
 
     return _FULL_CITATION_TAG_PATTERN.sub(_replace, output).rstrip()
@@ -114,7 +118,12 @@ class MedicalAssistant:
         # Hard safety gate -- runs regardless of what the LLM would have said.
         emergency_check = check_emergency(user_input)
         if emergency_check != "NO_EMERGENCY_DETECTED":
-            return {"output": emergency_check, "emergency": True, "tool_calls": [], "sources_used": []}
+            return {
+                "output": emergency_check,
+                "emergency": True,
+                "tool_calls": [],
+                "sources_used": [],
+            }
 
         try:
             result = self.executor.invoke(
@@ -123,6 +132,7 @@ class MedicalAssistant:
             sources = _extract_sources(result.get("intermediate_steps", []))
             clean_output = _sanitize_citations(result["output"], sources)
             return {"output": clean_output, "emergency": False, "sources_used": sources}
+
         except Exception:
             log.exception("Agent execution failed")
             return {

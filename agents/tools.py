@@ -4,6 +4,7 @@ auditable responsibility -- this matters in a safety-critical domain where
 we want to be able to point at exactly which component produced a given
 claim (retrieval vs. a deterministic lookup vs. the LLM's own phrasing).
 """
+
 import csv
 import logging
 from pathlib import Path
@@ -11,7 +12,11 @@ from pathlib import Path
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from agents.prompts import EMERGENCY_PATTERNS, EMERGENCY_RESPONSE, INSUFFICIENT_EVIDENCE_MSG
+from agents.prompts import (
+    EMERGENCY_PATTERNS,
+    EMERGENCY_RESPONSE,
+    INSUFFICIENT_EVIDENCE_MSG,
+)
 from rag.retriever import MedicalRetriever
 from monitoring.metrics import TOOL_CALL_COUNT, INSUFFICIENT_EVIDENCE_COUNT
 
@@ -54,7 +59,9 @@ emergency_triage_tool = StructuredTool.from_function(
 # RAG Tool -- retrieval over the medical knowledge base
 # ---------------------------------------------------------------------------
 class RAGQueryInput(BaseModel):
-    query: str = Field(..., description="Clinical question to search the knowledge base for")
+    query: str = Field(
+        ..., description="Clinical question to search the knowledge base for"
+    )
 
 
 _retriever = MedicalRetriever()  # module-level singleton, index built lazily
@@ -74,7 +81,8 @@ def rag_search(query: str) -> str:
         INSUFFICIENT_EVIDENCE_COUNT.inc()
         log.info(
             "Self-RAG deemed evidence insufficient (confidence=%.2f, reason=%r)",
-            grading.confidence, grading.reason,
+            grading.confidence,
+            grading.reason,
         )
         return INSUFFICIENT_EVIDENCE_MSG
 

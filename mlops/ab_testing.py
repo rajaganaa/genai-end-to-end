@@ -16,6 +16,7 @@ This is intentionally a simple, auditable split -- not a bandit algorithm
 -- because in a clinical-adjacent product, predictable/explainable
 routing matters more than optimizing the split in real time.
 """
+
 import hashlib
 import logging
 from dataclasses import dataclass
@@ -34,7 +35,11 @@ def assign_variant(session_id: str) -> str:
     settings.ab_test_treatment_traffic_pct across many sessions."""
     digest = hashlib.sha256(session_id.encode()).hexdigest()
     bucket = int(digest, 16) % 1000 / 1000.0  # value in [0, 1)
-    variant = TREATMENT_VARIANT if bucket < settings.ab_test_treatment_traffic_pct else BASE_VARIANT
+    variant = (
+        TREATMENT_VARIANT
+        if bucket < settings.ab_test_treatment_traffic_pct
+        else BASE_VARIANT
+    )
     return variant
 
 
@@ -69,7 +74,10 @@ class ABTestAnalyzer:
             summary[variant] = {
                 "n": n,
                 "safety_pass_rate": sum(r.safety_pass for r in variant_records) / n,
-                "grounded_answer_rate": sum(r.had_grounded_answer for r in variant_records) / n,
+                "grounded_answer_rate": sum(
+                    r.had_grounded_answer for r in variant_records
+                )
+                / n,
                 "avg_latency_ms": sum(r.latency_ms for r in variant_records) / n,
             }
         return summary
@@ -81,12 +89,18 @@ class ABTestAnalyzer:
         (e.g. a two-proportion z-test) given enough sample size -- this is
         a directional check, not a substitute for that."""
         summary = self.summarize()
-        base, treatment = summary.get(BASE_VARIANT, {}), summary.get(TREATMENT_VARIANT, {})
+        base, treatment = summary.get(BASE_VARIANT, {}), summary.get(
+            TREATMENT_VARIANT, {}
+        )
         if base.get("n", 0) < 30 or treatment.get("n", 0) < 30:
-            log.warning("Insufficient sample size for a promotion decision (need >=30/variant)")
+            log.warning(
+                "Insufficient sample size for a promotion decision (need >=30/variant)"
+            )
             return False
 
         margin = 0.02  # allow up to 2 percentage points of noise
         safety_ok = treatment["safety_pass_rate"] >= base["safety_pass_rate"] - margin
-        grounded_ok = treatment["grounded_answer_rate"] >= base["grounded_answer_rate"] - margin
+        grounded_ok = (
+            treatment["grounded_answer_rate"] >= base["grounded_answer_rate"] - margin
+        )
         return safety_ok and grounded_ok

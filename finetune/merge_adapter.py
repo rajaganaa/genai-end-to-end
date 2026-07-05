@@ -12,6 +12,7 @@ Two export paths for a trained LoRA adapter:
    single-artifact deployment (e.g. shipping to an edge device, or a
    serving stack without LoRA support).
 """
+
 import argparse
 import logging
 
@@ -28,9 +29,7 @@ def main():
     parser.add_argument("--base_model", required=True)
     parser.add_argument("--adapter", required=True)
     parser.add_argument("--output_dir", required=True)
-    parser.add_argument(
-        "--mode", choices=["vllm_lora", "merged"], default="vllm_lora"
-    )
+    parser.add_argument("--mode", choices=["vllm_lora", "merged"], default="vllm_lora")
     args = parser.parse_args()
 
     if args.mode == "vllm_lora":
@@ -42,10 +41,12 @@ def main():
         )
         PeftModel.from_pretrained(base, args.adapter)  # raises if incompatible
         import shutil
+
         shutil.copytree(args.adapter, args.output_dir, dirs_exist_ok=True)
         log.info(
             "Adapter validated and staged at %s. Point vLLM's "
-            "--lora-modules at this directory.", args.output_dir
+            "--lora-modules at this directory.",
+            args.output_dir,
         )
         return
 

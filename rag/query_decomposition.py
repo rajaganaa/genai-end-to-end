@@ -9,6 +9,7 @@ question tends to retrieve passages that are each only partially relevant,
 because the embedding of the compound question is a blurry average of its
 parts.
 """
+
 import json
 import logging
 
@@ -38,7 +39,7 @@ class QueryDecomposer:
             base_url=settings.vllm_base_url,
             api_key=settings.vllm_api_key,
             model=settings.vllm_model_name,
-            temperature=0.0,   # deterministic decomposition
+            temperature=0.0,  # deterministic decomposition
             max_tokens=300,
             timeout=20,
         )
@@ -51,11 +52,21 @@ class QueryDecomposer:
             response = self.llm.invoke(DECOMPOSITION_PROMPT.format(query=query))
             raw = response.content.strip()
             # Strip accidental markdown code fences if the model adds them
-            raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+            raw = (
+                raw.removeprefix("```json")
+                .removeprefix("```")
+                .removesuffix("```")
+                .strip()
+            )
             sub_questions = json.loads(raw)
             if not isinstance(sub_questions, list) or not sub_questions:
                 raise ValueError("Decomposition did not return a non-empty list")
-            return [str(q) for q in sub_questions][:4]  # hard cap: avoid runaway fan-out
+            return [str(q) for q in sub_questions][
+                :4
+            ]  # hard cap: avoid runaway fan-out
         except Exception:
-            log.warning("Query decomposition failed/malformed, falling back to single query", exc_info=True)
+            log.warning(
+                "Query decomposition failed/malformed, falling back to single query",
+                exc_info=True,
+            )
             return [query]

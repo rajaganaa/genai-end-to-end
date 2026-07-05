@@ -10,6 +10,7 @@ Intended to run on a schedule (cron / Airflow / GitHub Actions cron) via:
 Where --current_score comes from eval/evaluate.py's output (wire the two
 together in your CI/CD: run evaluate.py, parse its pass rate, pass it here).
 """
+
 import argparse
 import json
 import logging
@@ -72,7 +73,9 @@ def trigger_retraining_pipeline(reason: str) -> None:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--current_score", type=float, required=True,
+        "--current_score",
+        type=float,
+        required=True,
         help="Latest eval pass rate/accuracy, e.g. from eval/evaluate.py",
     )
     args = parser.parse_args()
@@ -80,20 +83,28 @@ def main():
     history = load_history()
     baseline = get_baseline_score(history)
 
-    history.append({
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "score": args.current_score,
-    })
+    history.append(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "score": args.current_score,
+        }
+    )
     save_history(history)
 
     if baseline is None:
-        log.info("No baseline yet (first recorded score: %.4f) -- nothing to compare against.", args.current_score)
+        log.info(
+            "No baseline yet (first recorded score: %.4f) -- nothing to compare against.",
+            args.current_score,
+        )
         return
 
     drop = baseline - args.current_score
     log.info(
         "Current score=%.4f  baseline=%.4f  drop=%.4f  threshold=%.4f",
-        args.current_score, baseline, drop, settings.retrain_trigger_score_drop,
+        args.current_score,
+        baseline,
+        drop,
+        settings.retrain_trigger_score_drop,
     )
 
     if drop >= settings.retrain_trigger_score_drop:

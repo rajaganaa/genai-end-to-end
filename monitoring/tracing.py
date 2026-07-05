@@ -9,6 +9,7 @@ spans we can export to any backend (Jaeger, Tempo, Honeycomb, etc.) via
 Grafana/Prometheus stack. Together they cover both "what did the agent
 decide" and "where did the latency/errors happen."
 """
+
 import logging
 
 from opentelemetry import trace
@@ -39,7 +40,10 @@ def init_tracing(service_name: str = "medassist-genai") -> trace.Tracer:
     trace.set_tracer_provider(provider)
 
     _tracer = trace.get_tracer(service_name)
-    log.info("OpenTelemetry tracing initialized, exporting to %s", settings.otel_exporter_endpoint)
+    log.info(
+        "OpenTelemetry tracing initialized, exporting to %s",
+        settings.otel_exporter_endpoint,
+    )
     return _tracer
 
 
@@ -50,6 +54,7 @@ def get_tracer() -> trace.Tracer:
 
 
 # --- Convenience context managers for the spans we care about most ---
+
 
 def traced_retrieval(query: str):
     """Usage: with traced_retrieval(query) as span: ... span.set_attribute(...)"""

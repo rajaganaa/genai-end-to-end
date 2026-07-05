@@ -4,6 +4,7 @@ then reranked with a cross-encoder. Medical queries need lexical precision
 (exact drug names, ICD-10 codes, dosage units) that pure dense retrieval
 sometimes misses, so we combine both rather than relying on embeddings alone.
 """
+
 import logging
 from dataclasses import dataclass
 
@@ -63,45 +64,31 @@ class MedicalRetriever:
         self._bm25_index = BM25Okapi(tokenized)
         log.info("Built BM25 index over %d documents", len(tokenized))
 
-
-
-
-
-
-
-
     def _bm25_search(self, query: str, top_k: int) -> list[dict]:
         self._lazy_build_bm25()
         if self._bm25_index is None:
             return []
         scores = self._bm25_index.get_scores(query.lower().split())
-        ranked_idx = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
+        ranked_idx = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[
+            :top_k
+        ]
         return [
-            {"id": self._bm25_corpus_ids[i], "text": self._bm25_corpus_texts[i], "score": scores[i]}
+            {
+                "id": self._bm25_corpus_ids[i],
+                "text": self._bm25_corpus_texts[i],
+                "score": scores[i],
+            }
             for i in ranked_idx
         ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def retrieve(self, query: str) -> list[RetrievedPassage]:
         """Returns reranked, deduplicated passages above the relevance floor.
         Empty list signals "insufficient evidence" to the caller -- callers
         must NOT let the LLM answer unsupported in that case."""
         tracer = get_tracer()
-        with tracer.start_as_current_span("rag.retrieve") as span, RETRIEVAL_LATENCY.time():
+        with tracer.start_as_current_span(
+            "rag.retrieve"
+        ) as span, RETRIEVAL_LATENCY.time():
             span.set_attribute("rag.query_length", len(query))
 
             # HyDE: search with a hypothetical answer passage instead of the
@@ -173,16 +160,22 @@ class MedicalRetriever:
             span.set_attribute("rag.passages_returned", len(results))
             return results
 
-    def retrieve_multi_hop(self, query: str) -> tuple[list[RetrievedPassage], "SelfRAGResult"]:
+    def retrieve_multi_hop(
+        self, query: str
+    ) -> tuple[list[RetrievedPassage], "SelfRAGResult"]:
         """Entry point that combines query decomposition + retrieval +
         self-RAG grading. This is what agents/tools.py::rag_search should
         call for full "advanced RAG" behavior; retrieve() alone remains
         available for callers that just want raw hybrid retrieval.
         """
-        from rag.self_rag import SelfRAGResult  # local import avoids a circular import at module load
 
         sub_queries = self.decomposer.decompose(query)
-        log.debug("Decomposed %r into %d sub-question(s): %s", query, len(sub_queries), sub_queries)
+        log.debug(
+            "Decomposed %r into %d sub-question(s): %s",
+            query,
+            len(sub_queries),
+            sub_queries,
+        )
 
         all_passages: list[RetrievedPassage] = []
         seen_texts = set()

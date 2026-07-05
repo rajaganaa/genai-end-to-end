@@ -10,6 +10,7 @@ retrieve than the bare question is.
 Reference: Gao et al., "Precise Zero-Shot Dense Retrieval without
 Relevance Labels" (2022).
 """
+
 import logging
 
 from langchain_openai import ChatOpenAI

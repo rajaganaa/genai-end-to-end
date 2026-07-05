@@ -3,6 +3,7 @@ Prometheus metrics for MedAssist-GenAI. Exposed at GET /metrics (see
 serving/api.py) for scraping by a Prometheus server, which Grafana then
 reads for the dashboard defined in monitoring/grafana_dashboard.json.
 """
+
 from prometheus_client import Counter, Histogram, Gauge
 
 # --- Request-level metrics ---
@@ -10,7 +11,8 @@ REQUEST_COUNT = Counter(
     "medassist_requests_total", "Total chat requests", ["endpoint", "status"]
 )
 REQUEST_LATENCY = Histogram(
-    "medassist_request_latency_seconds", "End-to-end request latency",
+    "medassist_request_latency_seconds",
+    "End-to-end request latency",
     buckets=(0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 30, 60),
 )
 
@@ -23,9 +25,7 @@ INSUFFICIENT_EVIDENCE_COUNT = Counter(
     "medassist_insufficient_evidence_total",
     "Times RAG returned no passages above the relevance floor",
 )
-REFUSAL_COUNT = Counter(
-    "medassist_refusals_total", "Times the agent refused a request"
-)
+REFUSAL_COUNT = Counter("medassist_refusals_total", "Times the agent refused a request")
 
 # --- RAG-specific metrics ---
 RETRIEVAL_LATENCY = Histogram(
@@ -53,6 +53,7 @@ TOOL_CALL_COUNT = Counter(
     "medassist_tool_calls_total", "Tool invocations by tool name", ["tool_name"]
 )
 AGENT_ITERATIONS = Histogram(
-    "medassist_agent_iterations", "Number of tool-call loops per request",
+    "medassist_agent_iterations",
+    "Number of tool-call loops per request",
     buckets=(1, 2, 3, 4, 5, 6),
 )

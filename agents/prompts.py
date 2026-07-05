@@ -1,3 +1,5 @@
+
+import re as _re
 """
 System prompts and the emergency-detection keyword list.
 
@@ -55,7 +57,7 @@ INSUFFICIENT_EVIDENCE_MSG = (
 # drooping" both match, whereas a literal substring check requires the
 # exact phrase and misses common paraphrasing (verified: the previous
 # literal-substring version missed 8/10 realistic test phrasings).
-import re as _re
+
 
 _EMERGENCY_REGEX_SOURCES = [
     r"chest\s+(pain|hurt|tight|pressure|crushing)",

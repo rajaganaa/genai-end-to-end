@@ -16,6 +16,7 @@ Usage (single/multi-GPU via accelerate):
         --dataset data/processed/medical_sft.jsonl \
         --output_dir checkpoints/medical-lora-13b
 """
+
 import argparse
 import logging
 
@@ -64,8 +65,8 @@ def build_quant_config() -> BitsAndBytesConfig:
 
 def build_lora_config(target_modules: list[str]) -> LoraConfig:
     return LoraConfig(
-        r=16,                     # rank -- 16 is a solid default for 13B-70B SFT
-        lora_alpha=32,            # scaling factor, typically 2x rank
+        r=16,  # rank -- 16 is a solid default for 13B-70B SFT
+        lora_alpha=32,  # scaling factor, typically 2x rank
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM",
@@ -97,7 +98,8 @@ def main():
         help="comma-separated attention/MLP projection layers to adapt",
     )
     parser.add_argument(
-        "--run_name", default=None,
+        "--run_name",
+        default=None,
         help="MLflow run name; defaults to '<base_model>-<timestamp>' if unset",
     )
     args = parser.parse_args()
@@ -105,25 +107,30 @@ def main():
     mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
     mlflow.set_experiment(settings.mlflow_experiment_name)
 
-    run_name = args.run_name or f"{args.base_model.split('/')[-1]}-{args.output_dir.split('/')[-1]}"
+    run_name = (
+        args.run_name
+        or f"{args.base_model.split('/')[-1]}-{args.output_dir.split('/')[-1]}"
+    )
 
     # Everything inside this `with` block is one comparable MLflow run:
     # hyperparameters, per-step metrics (via MLflowLoggingCallback), and
     # the final adapter as a logged artifact. This is what makes runs
     # diffable in the MLflow UI instead of scattered across log files.
     with mlflow.start_run(run_name=run_name):
-        mlflow.log_params({
-            "base_model": args.base_model,
-            "epochs": args.epochs,
-            "per_device_batch_size": args.per_device_batch_size,
-            "grad_accum_steps": args.grad_accum_steps,
-            "learning_rate": args.learning_rate,
-            "max_seq_length": args.max_seq_length,
-            "lora_r": 16,
-            "lora_alpha": 32,
-            "target_modules": args.target_modules,
-            "dataset": args.dataset,
-        })
+        mlflow.log_params(
+            {
+                "base_model": args.base_model,
+                "epochs": args.epochs,
+                "per_device_batch_size": args.per_device_batch_size,
+                "grad_accum_steps": args.grad_accum_steps,
+                "learning_rate": args.learning_rate,
+                "max_seq_length": args.max_seq_length,
+                "lora_r": 16,
+                "lora_alpha": 32,
+                "target_modules": args.target_modules,
+                "dataset": args.dataset,
+            }
+        )
 
         log.info("Loading tokenizer and base model: %s", args.base_model)
         tokenizer = AutoTokenizer.from_pretrained(args.base_model)
@@ -145,11 +152,13 @@ def main():
         model.print_trainable_parameters()  # sanity check: should be ~0.1-1%
 
         trainable, total = model.get_nb_trainable_parameters()
-        mlflow.log_params({
-            "trainable_params": trainable,
-            "total_params": total,
-            "trainable_pct": round(100 * trainable / total, 4),
-        })
+        mlflow.log_params(
+            {
+                "trainable_params": trainable,
+                "total_params": total,
+                "trainable_pct": round(100 * trainable / total, 4),
+            }
+        )
 
         log.info("Loading dataset: %s", args.dataset)
         dataset = load_dataset("json", data_files=args.dataset, split="train")
@@ -159,7 +168,9 @@ def main():
         )
         # Hold out a small slice for eval loss monitoring during training
         split = dataset.train_test_split(test_size=0.05, seed=42)
-        mlflow.log_params({"train_size": len(split["train"]), "eval_size": len(split["test"])})
+        mlflow.log_params(
+            {"train_size": len(split["train"]), "eval_size": len(split["test"])}
+        )
 
         training_args = TrainingArguments(
             output_dir=args.output_dir,
@@ -168,7 +179,7 @@ def main():
             gradient_accumulation_steps=args.grad_accum_steps,
             learning_rate=args.learning_rate,
             bf16=True,
-            gradient_checkpointing=True,   # trade compute for memory -- needed at this scale
+            gradient_checkpointing=True,  # trade compute for memory -- needed at this scale
             logging_steps=10,
             eval_strategy="steps",
             eval_steps=100,
@@ -177,7 +188,9 @@ def main():
             save_total_limit=3,
             warmup_ratio=0.03,
             lr_scheduler_type="cosine",
-            report_to=["tensorboard"],   # per-step curves; MLflow gets the same via callback below
+            report_to=[
+                "tensorboard"
+            ],  # per-step curves; MLflow gets the same via callback below
         )
 
         trainer = SFTTrainer(
@@ -201,7 +214,13 @@ def main():
         # Log final eval metrics explicitly (in addition to the per-step
         # callback) so they're easy to find as the run's headline numbers.
         final_metrics = trainer.evaluate()
-        mlflow.log_metrics({f"final_{k}": v for k, v in final_metrics.items() if isinstance(v, (int, float))})
+        mlflow.log_metrics(
+            {
+                f"final_{k}": v
+                for k, v in final_metrics.items()
+                if isinstance(v, (int, float))
+            }
+        )
 
         # Log the adapter directory as an MLflow artifact so it's retrievable
         # from the MLflow UI/API even if the local checkpoints/ dir is later
@@ -209,7 +228,10 @@ def main():
         mlflow.log_artifacts(args.output_dir, artifact_path="lora_adapter")
 
         run_id = mlflow.active_run().info.run_id
-        log.info("MLflow run complete: run_id=%s (use with mlops/model_registry.py to register)", run_id)
+        log.info(
+            "MLflow run complete: run_id=%s (use with mlops/model_registry.py to register)",
+            run_id,
+        )
 
 
 if __name__ == "__main__":

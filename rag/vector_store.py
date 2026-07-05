@@ -3,6 +3,7 @@ Thin wrapper around Chroma so the rest of the codebase depends on our own
 interface, not directly on a specific vector DB. Swapping to pgvector/
 Pinecone/Weaviate later only requires changes here.
 """
+
 import logging
 from typing import Any
 
@@ -40,7 +41,9 @@ class VectorStore:
                 documents=texts[i : i + batch_size],
                 metadatas=metadatas[i : i + batch_size],
             )
-        log.info("Upserted %d documents into collection '%s'", len(ids), self.collection.name)
+        log.info(
+            "Upserted %d documents into collection '%s'", len(ids), self.collection.name
+        )
 
     def query(self, query_text: str, top_k: int) -> list[dict[str, Any]]:
         """Dense similarity search. Returns list of {id, text, metadata, score}."""

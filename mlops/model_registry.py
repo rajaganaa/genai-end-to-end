@@ -15,6 +15,7 @@ Usage:
     python mlops/model_registry.py rollback
     python mlops/model_registry.py list
 """
+
 import argparse
 import logging
 
@@ -41,7 +42,9 @@ def register_model(run_id: str) -> str:
     result = mlflow.register_model(model_uri, settings.model_registry_name)
     log.info(
         "Registered version %s of '%s' from run %s",
-        result.version, settings.model_registry_name, run_id,
+        result.version,
+        settings.model_registry_name,
+        run_id,
     )
     return result.version
 
@@ -53,7 +56,9 @@ def promote_to_production(version: str) -> None:
     response" questions during incident review)."""
     client = _client()
 
-    current_prod = client.get_latest_versions(settings.model_registry_name, stages=["Production"])
+    current_prod = client.get_latest_versions(
+        settings.model_registry_name, stages=["Production"]
+    )
     for mv in current_prod:
         client.transition_model_version_stage(
             settings.model_registry_name, mv.version, stage="Archived"
@@ -70,7 +75,9 @@ def rollback_to_previous() -> str:
     """Rolls back to the most recently archived version. Useful as a fast
     incident-response action when a newly promoted model regresses."""
     client = _client()
-    archived = client.get_latest_versions(settings.model_registry_name, stages=["Archived"])
+    archived = client.get_latest_versions(
+        settings.model_registry_name, stages=["Archived"]
+    )
     if not archived:
         raise RuntimeError("No archived version available to roll back to")
     # Most recent archived version (highest version number that isn't current prod)
@@ -85,10 +92,16 @@ def resolve_production_adapter_path() -> str:
     Production. serving/vllm_server.sh (or its Terraform user_data) should
     call this at boot rather than hardcoding LORA_PATH."""
     client = _client()
-    prod = client.get_latest_versions(settings.model_registry_name, stages=["Production"])
+    prod = client.get_latest_versions(
+        settings.model_registry_name, stages=["Production"]
+    )
     if not prod:
-        raise RuntimeError(f"No Production version of '{settings.model_registry_name}' found")
-    return client.get_model_version_download_uri(settings.model_registry_name, prod[0].version)
+        raise RuntimeError(
+            f"No Production version of '{settings.model_registry_name}' found"
+        )
+    return client.get_model_version_download_uri(
+        settings.model_registry_name, prod[0].version
+    )
 
 
 def list_versions() -> None:

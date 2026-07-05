@@ -16,6 +16,7 @@ ParentDocumentStore -- see rag/retriever.py's `_expand_to_parent`.
 Usage:
     python rag/ingest.py --source data/raw --collection medical_kb
 """
+
 import argparse
 import hashlib
 import logging
@@ -60,10 +61,12 @@ def main():
 
     # Two splitters: coarse for parents, fine for children within each parent.
     parent_splitter = SentenceSplitter(
-        chunk_size=settings.parent_chunk_size, chunk_overlap=settings.parent_chunk_size // 8
+        chunk_size=settings.parent_chunk_size,
+        chunk_overlap=settings.parent_chunk_size // 8,
     )
     child_splitter = SentenceSplitter(
-        chunk_size=settings.child_chunk_size, chunk_overlap=settings.child_chunk_size // 8
+        chunk_size=settings.child_chunk_size,
+        chunk_overlap=settings.child_chunk_size // 8,
     )
 
     store = VectorStore(collection_name=args.collection)
@@ -90,11 +93,13 @@ def main():
                 cid = f"{parent_id}-child-{c_idx}"
                 child_ids.append(cid)
                 child_texts.append(child_text)
-                child_metadatas.append({
-                    "source_file": filename,
-                    "parent_id": parent_id,
-                    "child_index": c_idx,
-                })
+                child_metadatas.append(
+                    {
+                        "source_file": filename,
+                        "parent_id": parent_id,
+                        "child_index": c_idx,
+                    }
+                )
 
     if not child_ids:
         log.warning("No chunks produced -- check source directory contents.")
@@ -107,7 +112,8 @@ def main():
 
     log.info(
         "Ingestion complete. %d parent chunks, %d child chunks embedded.",
-        len(parents_batch), store.count(),
+        len(parents_batch),
+        store.count(),
     )
 
 

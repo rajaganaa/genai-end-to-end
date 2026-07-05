@@ -8,6 +8,7 @@ infra concerns:
   - structured error handling / graceful degradation
   - request timing
 """
+
 import logging
 import os
 import re
@@ -23,7 +24,10 @@ from agents.agent import MedicalAssistant
 from agents.tools import _retriever
 from config.settings import settings
 from monitoring.metrics import (
-    REQUEST_COUNT, REQUEST_LATENCY, EMERGENCY_TRIGGERED, ACTIVE_LORA_ADAPTER,
+    REQUEST_COUNT,
+    REQUEST_LATENCY,
+    EMERGENCY_TRIGGERED,
+    ACTIVE_LORA_ADAPTER,
 )
 from monitoring.tracing import init_tracing
 from serving.schemas import ChatRequest, ChatResponse, HealthResponse
@@ -89,7 +93,9 @@ def startup():
     if settings.langsmith_tracing:
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_PROJECT"] = settings.langsmith_project
-        log.info("LangSmith tracing enabled for project '%s'", settings.langsmith_project)
+        log.info(
+            "LangSmith tracing enabled for project '%s'", settings.langsmith_project
+        )
 
     # OTel spans cover our own pipeline steps (retrieval, tool calls) and
     # export to whatever OTLP collector feeds Grafana/Tempo/Jaeger.
@@ -142,7 +148,9 @@ def chat(req: ChatRequest, api_key: str = Security(verify_api_key)):
         )
 
     latency_ms = (time.perf_counter() - start) * 1000
-    log.info("Request handled in %.1fms (emergency=%s)", latency_ms, result.get("emergency"))
+    log.info(
+        "Request handled in %.1fms (emergency=%s)", latency_ms, result.get("emergency")
+    )
 
     REQUEST_COUNT.labels(endpoint="/chat", status="ok").inc()
     if result.get("emergency"):

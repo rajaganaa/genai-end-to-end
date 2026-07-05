@@ -9,6 +9,7 @@ This module is the parent-id -> parent-text lookup store. Backed by a
 simple JSON file for this reference implementation; swap for Redis/
 DynamoDB/a Postgres table in production once corpus size warrants it.
 """
+
 import json
 import logging
 from pathlib import Path

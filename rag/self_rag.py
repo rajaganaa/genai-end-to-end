@@ -12,6 +12,7 @@ Critique through Self-Reflection" (2023) -- this is a lightweight,
 prompt-based approximation of that idea rather than a model trained with
 the paper's special reflection tokens.
 """
+
 import logging
 from dataclasses import dataclass
 
@@ -61,10 +62,14 @@ class SelfRAGReflector:
     def grade(self, query: str, passages_text: str) -> SelfRAGResult:
         if not settings.enable_self_rag:
             # Feature disabled -- treat everything as sufficiently confident
-            return SelfRAGResult(confidence=1.0, reason="self-RAG disabled", should_answer=True)
+            return SelfRAGResult(
+                confidence=1.0, reason="self-RAG disabled", should_answer=True
+            )
 
         if not passages_text.strip():
-            return SelfRAGResult(confidence=0.0, reason="no passages retrieved", should_answer=False)
+            return SelfRAGResult(
+                confidence=0.0, reason="no passages retrieved", should_answer=False
+            )
 
         try:
             response = self.llm.invoke(
@@ -81,9 +86,15 @@ class SelfRAGReflector:
 
             should_answer = confidence >= settings.self_rag_confidence_floor
             log.debug("Self-RAG grading: confidence=%.2f reason=%r", confidence, reason)
-            return SelfRAGResult(confidence=confidence, reason=reason, should_answer=should_answer)
+            return SelfRAGResult(
+                confidence=confidence, reason=reason, should_answer=should_answer
+            )
         except Exception:
-            log.exception("Self-RAG grading failed -- defaulting to cautious 'insufficient'")
+            log.exception(
+                "Self-RAG grading failed -- defaulting to cautious 'insufficient'"
+            )
             # Fail closed: if we can't verify sufficiency, don't let the
             # agent answer as if it were sufficient.
-            return SelfRAGResult(confidence=0.0, reason="grading error", should_answer=False)
+            return SelfRAGResult(
+                confidence=0.0, reason="grading error", should_answer=False
+            )

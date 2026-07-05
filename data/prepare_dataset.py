@@ -11,6 +11,7 @@ Usage:
         --output data/processed/medical_sft.jsonl \
         --sources medqa,pubmedqa,internal_notes
 """
+
 import argparse
 import json
 import logging
@@ -53,9 +54,7 @@ def load_medqa(path: str) -> Iterator[dict]:
             yield {
                 "instruction": clean_text(row["question"]),
                 "input": "",
-                "output": clean_text(
-                    f"{row['answer']}. {row.get('explanation', '')}"
-                ),
+                "output": clean_text(f"{row['answer']}. {row.get('explanation', '')}"),
             }
 
 
@@ -119,11 +118,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
     parser.add_argument(
-        "--sources", default="medqa,pubmedqa",
+        "--sources",
+        default="medqa,pubmedqa",
         help="comma-separated: medqa,pubmedqa,internal_notes",
     )
     parser.add_argument(
-        "--max_examples", type=int, default=None,
+        "--max_examples",
+        type=int,
+        default=None,
         help="cap total examples (useful for quick smoke tests)",
     )
     args = parser.parse_args()

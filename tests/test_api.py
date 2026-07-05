@@ -5,9 +5,9 @@ Requires the vLLM server and vector store to be reachable, or mock
 serving.api._assistant for pure unit tests -- see test_emergency_shortcircuit
 for an example that mocks around the LLM entirely.
 """
-from unittest.mock import MagicMock, patch
 
-import pytest
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 from serving.api import app

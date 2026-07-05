@@ -1,0 +1,65 @@
+{
+  "title": "MedAssist-GenAI Observability",
+  "description": "Scrapes the /metrics endpoint exposed by serving/api.py. Import into Grafana with the Prometheus datasource already configured pointing at your Prometheus server.",
+  "panels": [
+    {
+      "title": "Request rate (by status)",
+      "type": "timeseries",
+      "targets": [{"expr": "sum(rate(medassist_requests_total[5m])) by (status)"}]
+    },
+    {
+      "title": "P50/P95/P99 request latency",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(medassist_request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, sum(rate(medassist_request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95"},
+        {"expr": "histogram_quantile(0.99, sum(rate(medassist_request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p99"}
+      ]
+    },
+    {
+      "title": "Emergency responses triggered (rate)",
+      "type": "timeseries",
+      "description": "Should track roughly with expected symptom-severity distribution of traffic; sudden spikes or a flatline both warrant investigation.",
+      "targets": [{"expr": "rate(medassist_emergency_responses_total[15m])"}]
+    },
+    {
+      "title": "Insufficient-evidence rate",
+      "type": "timeseries",
+      "description": "Rising trend may indicate the knowledge base needs new content for emerging query patterns.",
+      "targets": [{"expr": "rate(medassist_insufficient_evidence_total[1h]) / rate(medassist_requests_total[1h])"}]
+    },
+    {
+      "title": "Retrieval relevance score distribution",
+      "type": "heatmap",
+      "targets": [{"expr": "sum(rate(medassist_retrieval_top_relevance_score_bucket[15m])) by (le)"}]
+    },
+    {
+      "title": "Retrieval + LLM latency breakdown",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(medassist_retrieval_latency_seconds_bucket[5m])) by (le))", "legendFormat": "retrieval p95"},
+        {"expr": "histogram_quantile(0.95, sum(rate(medassist_llm_latency_seconds_bucket[5m])) by (le))", "legendFormat": "llm p95"}
+      ]
+    },
+    {
+      "title": "Tool call distribution",
+      "type": "piechart",
+      "targets": [{"expr": "sum(increase(medassist_tool_calls_total[1h])) by (tool_name)"}]
+    },
+    {
+      "title": "Active LoRA adapter version",
+      "type": "stat",
+      "targets": [{"expr": "medassist_active_lora_adapter_info == 1"}]
+    },
+    {
+      "title": "Tokens generated (rate)",
+      "type": "timeseries",
+      "targets": [{"expr": "rate(medassist_llm_tokens_generated_total[5m])"}]
+    }
+  ],
+  "alerts_recommended": [
+    {"name": "HighInsufficientEvidenceRate", "condition": "insufficient-evidence rate > 20% over 1h", "action": "review knowledge base coverage"},
+    {"name": "P95LatencySLOBreach", "condition": "p95 request latency > 10s over 5m", "action": "check GPU saturation / vLLM queue depth"},
+    {"name": "ZeroEmergencyDetectionsAnomaly", "condition": "emergency rate drops to 0 for 24h despite steady traffic", "action": "verify emergency detector regex list hasn't regressed"}
+  ]
+}

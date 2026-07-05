@@ -1,0 +1,165 @@
+name: CI/CD
+
+# Lint -> unit tests -> eval harness (quality gate) -> build/deploy.
+# Deploy only runs on pushes to main, and only if everything before it is green.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install lint tools
+        run: pip install ruff black
+
+      - name: Ruff (style + common bugs)
+        run: ruff check .
+
+      - name: Black (formatting check only, no changes)
+        run: black --check .
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install test deps
+        # serving/api.py imports agents.agent -> agents.tools -> rag.retriever,
+        # which pulls in langchain, chromadb, rank-bm25, and sentence-transformers
+        # (which brings CPU torch + transformers as its own deps) just to
+        # construct the module graph -- even though the actual LLM/vector-store
+        # calls are mocked out in the tests themselves. We skip the deps that
+        # are ONLY used by finetune/train_qlora.py and never imported by the
+        # serving path: deepspeed, bitsandbytes, peft, trl, accelerate, vllm.
+        # Those get exercised in the (separate, GPU-backed) fine-tuning job,
+        # not here.
+        run: |
+          pip install fastapi uvicorn pydantic python-dotenv pytest pytest-cov \
+                      httpx prometheus-client requests tenacity \
+                      langchain==0.2.6 langchain-community==0.2.6 langchain-openai==0.1.14 \
+                      rank-bm25==0.2.2 sentence-transformers==3.0.1 chromadb==0.5.3 \
+                      opentelemetry-api==1.25.0 opentelemetry-sdk==1.25.0 \
+                      opentelemetry-exporter-otlp-proto-grpc==1.25.0
+
+      - name: Run pytest with coverage
+        run: pytest tests/ -v --cov=serving --cov=agents --cov=rag --cov-report=term-missing
+        env:
+          GATEWAY_API_KEY: local-dev-key
+          VLLM_BASE_URL: http://localhost:8001/v1
+
+  eval:
+    name: Eval harness (quality gate)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install eval deps
+        run: |
+          pip install fastapi uvicorn pydantic python-dotenv httpx prometheus-client \
+                      requests tenacity scikit-learn pandas tqdm \
+                      langchain==0.2.6 langchain-community==0.2.6 langchain-openai==0.1.14 \
+                      rank-bm25==0.2.2 sentence-transformers==3.0.1 chromadb==0.5.3 \
+                      opentelemetry-api==1.25.0 opentelemetry-sdk==1.25.0 \
+                      opentelemetry-exporter-otlp-proto-grpc==1.25.0
+
+      - name: Run eval/evaluate.py against golden test cases
+        # --mock runs in-process against eval/test_cases.jsonl using a stubbed
+        # agent (see eval/evaluate.py:_build_mock_client) -- it's a regression
+        # check on the safety-gating + routing logic in serving/api.py, not a
+        # live-model quality benchmark. Run without --mock against the real
+        # deployed endpoint (see infra/aws_deploy.md) for the authoritative
+        # quality signal before a release.
+        run: python eval/evaluate.py --mock --min-score 0.75
+        continue-on-error: false
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Upload eval report
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: eval_report.json
+          if-no-files-found: ignore
+
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    needs: eval
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (no push on PRs)
+        run: docker build -t medassist-genai:${{ github.sha }} .
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Log in to ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'us-east-1' }} \
+            | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+
+      - name: Build, tag, push
+        run: |
+          docker build -t ${{ secrets.ECR_REGISTRY }}/medassist-genai:${{ github.sha }} .
+          docker tag ${{ secrets.ECR_REGISTRY }}/medassist-genai:${{ github.sha }} \
+            ${{ secrets.ECR_REGISTRY }}/medassist-genai:latest
+          docker push ${{ secrets.ECR_REGISTRY }}/medassist-genai:${{ github.sha }}
+          docker push ${{ secrets.ECR_REGISTRY }}/medassist-genai:latest
+
+      - name: Apply Terraform (infra/terraform)
+        working-directory: infra/terraform
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve -input=false \
+            -var="image_tag=${{ github.sha }}"
+
+      # Students without AWS/GCP credits: comment out the three steps above
+      # and replace with a placeholder like `echo "deploy skipped -- no cloud creds"`.
+      # The pipeline still demonstrates the gate structure (lint -> test -> eval -> build -> deploy)
+      # even without a live target.

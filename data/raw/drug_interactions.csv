@@ -1,0 +1,6 @@
+drug_a,drug_b,interaction
+warfarin,aspirin,Increased bleeding risk due to combined anticoagulant/antiplatelet effect. Monitor INR closely.
+lisinopril,potassium supplements,Risk of hyperkalemia. Monitor serum potassium.
+simvastatin,clarithromycin,Increased simvastatin levels raising myopathy/rhabdomyolysis risk. Avoid combination.
+metformin,contrast dye,Risk of lactic acidosis; hold metformin around contrast procedures per protocol.
+sildenafil,nitrates,Severe hypotension risk. Contraindicated combination.

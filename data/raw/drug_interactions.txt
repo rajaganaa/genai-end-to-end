@@ -1,0 +1,15 @@
+Drug interaction: warfarin + aspirin
+Increased bleeding risk due to combined anticoagulant/antiplatelet effect. Monitor INR closely.
+
+Drug interaction: lisinopril + potassium supplements
+Risk of hyperkalemia. Monitor serum potassium.
+
+Drug interaction: simvastatin + clarithromycin
+Increased simvastatin levels raising myopathy/rhabdomyolysis risk. Avoid combination.
+
+Drug interaction: metformin + contrast dye
+Risk of lactic acidosis; hold metformin around contrast procedures per protocol.
+
+Drug interaction: sildenafil + nitrates
+Severe hypotension risk. Contraindicated combination.
+

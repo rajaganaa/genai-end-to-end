@@ -1,0 +1,23 @@
+{
+  "_comment_": "ZeRO Stage 3 config for accelerate/DeepSpeed. Use for 70B QLoRA across 4-8 GPUs. For 13B on 1-2 GPUs, ZeRO Stage 2 (zero_stage=2) is usually sufficient and faster.",
+  "compute_environment": "LOCAL_MACHINE",
+  "distributed_type": "DEEPSPEED",
+  "deepspeed_config": {
+    "zero_stage": 3,
+    "offload_optimizer_device": "cpu",
+    "offload_param_device": "none",
+    "zero3_init_flag": true,
+    "zero3_save_16bit_model": true,
+    "gradient_accumulation_steps": 4,
+    "gradient_clipping": 1.0
+  },
+  "mixed_precision": "bf16",
+  "num_machines": 1,
+  "num_processes": 4,
+  "main_training_function": "main",
+  "downcast_bf16": "no",
+  "machine_rank": 0,
+  "rdzv_backend": "static",
+  "same_network": true,
+  "use_cpu": false
+}

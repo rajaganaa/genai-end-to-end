@@ -37,7 +37,6 @@ def register_model(run_id: str) -> str:
     """Registers the LoRA adapter artifact from a completed training run
     as a new version in the model registry (stage: None -> will need
     explicit promotion)."""
-    client = _client()
     model_uri = f"runs:/{run_id}/lora_adapter"
     result = mlflow.register_model(model_uri, settings.model_registry_name)
     log.info(
@@ -54,8 +53,8 @@ def promote_to_production(version: str) -> None:
     whatever was previously in Production (so exactly one version is ever
     live at a time -- important for reproducibility of "what served this
     response" questions during incident review)."""
-    client = _client()
 
+    client = _client()
     current_prod = client.get_latest_versions(
         settings.model_registry_name, stages=["Production"]
     )

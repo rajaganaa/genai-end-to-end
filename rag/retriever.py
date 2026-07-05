@@ -16,7 +16,7 @@ from rag.vector_store import VectorStore
 from rag.parent_child_store import ParentDocumentStore
 from rag.hyde import HyDEGenerator
 from rag.query_decomposition import QueryDecomposer
-from rag.self_rag import SelfRAGReflector
+from rag.self_rag import SelfRAGReflector, SelfRAGResult
 from monitoring.metrics import RETRIEVAL_LATENCY, RETRIEVAL_RELEVANCE_SCORE
 from monitoring.tracing import get_tracer
 

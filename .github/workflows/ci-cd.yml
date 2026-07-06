@@ -132,34 +132,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
-
-      - name: Log in to ECR
+      - name: Deploy (manual for now)
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'us-east-1' }} \
-            | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-
-      - name: Build, tag, push
-        run: |
-          docker build -t ${{ secrets.ECR_REGISTRY }}/medassist-genai:${{ github.sha }} .
-          docker tag ${{ secrets.ECR_REGISTRY }}/medassist-genai:${{ github.sha }} \
-            ${{ secrets.ECR_REGISTRY }}/medassist-genai:latest
-          docker push ${{ secrets.ECR_REGISTRY }}/medassist-genai:${{ github.sha }}
-          docker push ${{ secrets.ECR_REGISTRY }}/medassist-genai:latest
-
-      - name: Apply Terraform (infra/terraform)
-        working-directory: infra/terraform
-        run: |
-          terraform init -input=false
-          terraform apply -auto-approve -input=false \
-            -var="image_tag=${{ github.sha }}"
-
-      # Students without AWS/GCP credits: comment out the three steps above
-      # and replace with a placeholder like `echo "deploy skipped -- no cloud creds"`.
-      # The pipeline still demonstrates the gate structure (lint -> test -> eval -> build -> deploy)
-      # even without a live target.
+          echo "Deploy skipped -- this project is currently deployed manually to a hand-configured EC2 instance."
+          echo "No AWS credentials are wired into this pipeline to avoid provisioning duplicate/untested infrastructure via Terraform."
+          echo "Pipeline demonstrates the gate structure (lint -> test -> eval -> build -> deploy) without a live automated target."

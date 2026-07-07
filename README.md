@@ -151,6 +151,8 @@ cd medical-genai-assistant
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # fill in HF_TOKEN, DB creds, etc.
+pip install -r requirements.txt
+> Use `requirements.txt` for the full stack (RAG, agents, fine-tuning, eval). Use `requirements-gateway.txt` instead if you're only deploying the lightweight FastAPI gateway (e.g. a separate container that just proxies to an already-running vLLM server).
 ```
 
 ### 3.3 Build the RAG knowledge base
